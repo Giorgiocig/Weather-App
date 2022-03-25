@@ -7,8 +7,6 @@ export default function () {
   const [data, setData] = useState({
     name: null,
     code: null,
-    lat: null,
-    long: null,
   });
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,18 +36,14 @@ export default function () {
           longitude: long,
           name,
         } = dataPosition.results[0];
-
-        setData((prevData) => {
-          return { ...prevData, lat: lat, long: long };
-        });
-        setError(null);
-
+        setError(false);
         //data for city
         const resCity = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${long}&hourly=temperature_2m&daily=weathercode&timezone=Europe%2FLondon`
         );
 
-        if (!resCity.ok) throw new Error("Error");
+        if (!resCity.ok)
+          throw new Error("It was not possible to find a location");
 
         const dataCity = await resCity.json();
         const { weathercode: code } = dataCity.daily;
@@ -57,6 +51,7 @@ export default function () {
         setData((prevData) => {
           return { ...prevData, name: name, code: code };
         });
+
         // set array locations
         setLocations((prevLocations) => {
           const newId = Math.floor(Math.random() * 1000) + 1;
@@ -65,10 +60,13 @@ export default function () {
             { ...prevLocations, id: newId, name: name, code: code },
           ];
         });
+        setError(null);
         setIsLoading(false);
       } catch (err) {
         if (err.name === "AbortError") {
-          console.log("the fetch was aborted");
+          setError(err.name);
+        } else if (query === "") {
+          setError(false);
         } else {
           setError("Could not fetch the data");
           setIsLoading(false);
@@ -91,8 +89,8 @@ export default function () {
   return (
     <div>
       <Search getQuery={(q) => setQuery(q)} />
-      <p>{isLoading && "Loading..."}</p>
-      {error && error}
+      {isLoading && <p>Loading...</p>}
+      {error && <p className="error-text">{error}</p>}
       <div className="grid">
         {data.code &&
           locations.map((el) => (
